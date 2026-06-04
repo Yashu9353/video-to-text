@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# PyInstaller build (too large for git)
+dist/
+build/
+
+# Next.js
+.next/
+node_modules/
+
+# Runtime data (user uploads & transcripts)
+uploads/
+outputs/
+
+# macOS
+.DS_Store
+
+# Secrets — never commit these
+.env
+.env.local
+
+# Vercel project link
+.vercel/

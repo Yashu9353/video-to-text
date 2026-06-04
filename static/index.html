@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video to Text Transcriber</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f0f13;
+      color: #e0e0e8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 40px;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #3a3a50;
+      border-radius: 12px;
+      padding: 48px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #a78bfa;
+      background: rgba(167, 139, 250, 0.04);
+    }
+
+    .drop-zone .icon { font-size: 3rem; margin-bottom: 12px; }
+    .drop-zone p { color: #9ca3af; font-size: 0.95rem; }
+    .drop-zone strong { color: #e0e0e8; }
+
+    #file-input { display: none; }
+
+    .selected-file {
+      margin-top: 16px;
+      background: #252535;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.875rem;
+      color: #a78bfa;
+      display: none;
+    }
+
+    .options-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    label.option-label {
+      font-size: 0.875rem;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
+    select {
+      flex: 1;
+      background: #252535;
+      border: 1px solid #3a3a50;
+      color: #e0e0e8;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      outline: none;
+    }
+    select:focus { border-color: #a78bfa; }
+
+    .btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .progress-section { display: none; margin-top: 24px; }
+
+    .progress-bar-wrap {
+      background: #252535;
+      border-radius: 99px;
+      height: 6px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #7c3aed, #2563eb);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.4s ease;
+      animation: pulse 1.5s ease-in-out infinite alternate;
+    }
+    @keyframes pulse { from { opacity: 1; } to { opacity: 0.6; } }
+
+    .status-text {
+      font-size: 0.85rem;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .result-section { display: none; margin-top: 24px; }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .result-header span { font-size: 0.875rem; color: #9ca3af; }
+
+    .download-btns { display: flex; gap: 8px; }
+
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      border: 1px solid #3a3a50;
+      background: #252535;
+      color: #e0e0e8;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-sm:hover { background: #2e2e42; }
+
+    .transcript-box {
+      background: #0f0f13;
+      border: 1px solid #2a2a38;
+      border-radius: 10px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      color: #d1d5db;
+    }
+
+    .segments-toggle {
+      margin-top: 16px;
+      font-size: 0.8rem;
+      color: #6b7280;
+      cursor: pointer;
+      text-decoration: underline dotted;
+      display: inline-block;
+    }
+
+    .segments-list {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .seg {
+      display: flex;
+      gap: 12px;
+      padding: 8px 12px;
+      border-left: 2px solid #3a3a50;
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+    }
+    .seg-time {
+      min-width: 100px;
+      color: #6b7280;
+      font-variant-numeric: tabular-nums;
+    }
+    .seg-text { color: #c9d1d9; }
+
+    .error-box {
+      display: none;
+      margin-top: 20px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Video to Text</h1>
+  <p class="subtitle">Transcribe any English video locally — no cloud, no cost</p>
+
+  <div class="card">
+    <div class="drop-zone" id="drop-zone">
+      <div class="icon">🎬</div>
+      <p><strong>Drop your video here</strong></p>
+      <p>or click to browse &mdash; MP4, MKV, MOV, AVI, WebM and more</p>
+    </div>
+    <input type="file" id="file-input" accept="video/*" />
+
+    <div class="selected-file" id="selected-file"></div>
+
+    <div class="options-row">
+      <label class="option-label" for="model-select">Model quality:</label>
+      <select id="model-select">
+        <option value="tiny">Tiny &mdash; fastest, lower accuracy</option>
+        <option value="base" selected>Base &mdash; good balance (recommended)</option>
+        <option value="small">Small &mdash; better accuracy, slower</option>
+        <option value="medium">Medium &mdash; high accuracy, much slower</option>
+        <option value="large">Large &mdash; best accuracy, very slow</option>
+      </select>
+    </div>
+
+    <button class="btn" id="upload-btn" disabled>Transcribe Video</button>
+
+    <div class="progress-section" id="progress-section">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <p class="status-text" id="status-text">Starting...</p>
+    </div>
+
+    <div class="error-box" id="error-box"></div>
+
+    <div class="result-section" id="result-section">
+      <div class="result-header">
+        <span id="word-count"></span>
+        <div class="download-btns">
+          <button class="btn-sm" id="copy-btn">Copy</button>
+          <button class="btn-sm" id="dl-txt-btn">Download .txt</button>
+          <button class="btn-sm" id="dl-json-btn">Download .json</button>
+        </div>
+      </div>
+      <div class="transcript-box" id="transcript-box"></div>
+      <span class="segments-toggle" id="segments-toggle">Show timestamped segments</span>
+      <div class="segments-list" id="segments-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const selectedFileEl = document.getElementById("selected-file");
+    const uploadBtn = document.getElementById("upload-btn");
+    const progressSection = document.getElementById("progress-section");
+    const progressBar = document.getElementById("progress-bar");
+    const statusText = document.getElementById("status-text");
+    const resultSection = document.getElementById("result-section");
+    const transcriptBox = document.getElementById("transcript-box");
+    const wordCountEl = document.getElementById("word-count");
+    const errorBox = document.getElementById("error-box");
+    const segmentsToggle = document.getElementById("segments-toggle");
+    const segmentsList = document.getElementById("segments-list");
+
+    let currentJobId = null;
+    let pollTimer = null;
+    let selectedFile = null;
+
+    dropZone.addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", e => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const f = e.dataTransfer.files[0];
+      if (f) setFile(f);
+    });
+    fileInput.addEventListener("change", () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+    function setFile(f) {
+      selectedFile = f;
+      selectedFileEl.style.display = "block";
+      selectedFileEl.textContent = `${f.name}  (${(f.size / 1024 / 1024).toFixed(1)} MB)`;
+      uploadBtn.disabled = false;
+      resetResult();
+    }
+
+    function resetResult() {
+      resultSection.style.display = "none";
+      errorBox.style.display = "none";
+      progressSection.style.display = "none";
+      progressBar.style.width = "0%";
+    }
+
+    uploadBtn.addEventListener("click", async () => {
+      if (!selectedFile) return;
+      resetResult();
+      uploadBtn.disabled = true;
+      progressSection.style.display = "block";
+      statusText.textContent = "Uploading video...";
+      progressBar.style.width = "10%";
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("model", document.getElementById("model-select").value);
+
+      try {
+        const res = await fetch("/upload", { method: "POST", body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || "Upload failed");
+        }
+        const data = await res.json();
+        currentJobId = data.job_id;
+        progressBar.style.width = "25%";
+        statusText.textContent = "Extracting audio...";
+        startPolling();
+      } catch (e) {
+        showError(e.message);
+        uploadBtn.disabled = false;
+      }
+    });
+
+    function startPolling() {
+      pollTimer = setInterval(pollStatus, 2000);
+    }
+
+    let pollTick = 0;
+    async function pollStatus() {
+      pollTick++;
+      try {
+        const res = await fetch(`/status/${currentJobId}`);
+        const job = await res.json();
+
+        if (job.status === "processing") {
+          const pct = Math.min(25 + pollTick * 3, 90);
+          progressBar.style.width = pct + "%";
+          statusText.textContent = job.duration
+            ? `Transcribing... (${formatTime(job.duration)} video)`
+            : "Transcribing audio with Whisper...";
+          return;
+        }
+
+        clearInterval(pollTimer);
+        pollTick = 0;
+
+        if (job.status === "done") {
+          progressBar.style.width = "100%";
+          statusText.textContent = "Done!";
+          setTimeout(() => {
+            progressSection.style.display = "none";
+            showResult(job);
+          }, 600);
+          uploadBtn.disabled = false;
+        } else if (job.status === "error") {
+          showError(job.error || "Transcription failed");
+          uploadBtn.disabled = false;
+        }
+      } catch (e) {
+        // network glitch — keep polling
+      }
+    }
+
+    function showResult(job) {
+      const words = job.text.split(/\s+/).filter(Boolean).length;
+      wordCountEl.textContent = `${words.toLocaleString()} words`;
+      transcriptBox.textContent = job.text;
+      resultSection.style.display = "block";
+
+      // Segments
+      segmentsList.innerHTML = "";
+      (job.segments || []).forEach(seg => {
+        const row = document.createElement("div");
+        row.className = "seg";
+        row.innerHTML = `<span class="seg-time">${formatTime(seg.start)} → ${formatTime(seg.end)}</span><span class="seg-text">${seg.text}</span>`;
+        segmentsList.appendChild(row);
+      });
+
+      document.getElementById("dl-txt-btn").onclick = () =>
+        window.location = `/download/${currentJobId}?fmt=txt`;
+      document.getElementById("dl-json-btn").onclick = () =>
+        window.location = `/download/${currentJobId}?fmt=json`;
+      document.getElementById("copy-btn").onclick = () => {
+        navigator.clipboard.writeText(job.text);
+        document.getElementById("copy-btn").textContent = "Copied!";
+        setTimeout(() => document.getElementById("copy-btn").textContent = "Copy", 2000);
+      };
+    }
+
+    segmentsToggle.addEventListener("click", () => {
+      const visible = segmentsList.style.display === "block";
+      segmentsList.style.display = visible ? "none" : "block";
+      segmentsToggle.textContent = visible ? "Show timestamped segments" : "Hide timestamped segments";
+    });
+
+    function showError(msg) {
+      errorBox.style.display = "block";
+      errorBox.textContent = "Error: " + msg;
+      progressSection.style.display = "none";
+    }
+
+    function formatTime(secs) {
+      const m = Math.floor(secs / 60).toString().padStart(2, "0");
+      const s = Math.floor(secs % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+  </script>
+</body>
+</html>

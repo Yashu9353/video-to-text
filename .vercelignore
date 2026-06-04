@@ -1,0 +1,15 @@
+# Local Python environment (PyTorch/Whisper — not needed on Vercel)
+.venv/
+__pycache__/
+
+# Local-only project files
+uploads/
+outputs/
+src/
+static/
+requirements.txt
+run.sh
+
+# Build artifacts
+.next/
+node_modules/
