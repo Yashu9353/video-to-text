@@ -48,7 +48,6 @@ def extract_audio(video_path: Path, tmp_dir: str) -> str:
 
 def transcribe(audio_path: str, model_name: str) -> dict:
     import whisper
-    import numpy as np
 
     print(f"  Loading Whisper '{model_name}' model...")
     model = whisper.load_model(model_name)
@@ -68,7 +67,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Transcribe an English video to text using local Whisper."
     )
-    parser.add_argument("video", help="Path to the video file")
+    parser.add_argument("video", nargs='+', help="Path to the video file (quotes optional)")
     parser.add_argument(
         "--model", "-m",
         default="base",
@@ -82,7 +81,9 @@ def main():
     )
     args = parser.parse_args()
 
-    video_path = Path(args.video).expanduser().resolve()
+    # Join parts so paths with spaces work without quotes
+    # e.g.  ./transcribe_video.sh /path/Hemanth MDM.mov  →  "/path/Hemanth MDM.mov"
+    video_path = Path(' '.join(args.video)).expanduser().resolve()
     if not video_path.exists():
         print(f"Error: file not found — {video_path}", file=sys.stderr)
         sys.exit(1)
